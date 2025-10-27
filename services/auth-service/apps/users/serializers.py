@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
+from django.db import transaction  
 from apps.users.models import User, District, Thana, Department, Designation
-
 
 
 class DistrictSerializer(serializers.ModelSerializer):
@@ -9,16 +9,19 @@ class DistrictSerializer(serializers.ModelSerializer):
         model = District
         fields = ['id', 'name', 'name_bn', 'division', 'is_active']
 
+
 class ThanaSerializer(serializers.ModelSerializer):
     district_name = serializers.CharField(source='district.name', read_only=True)
     class Meta:
         model = Thana
         fields = ['id', 'name', 'name_bn', 'district', 'district_name', 'is_active']
 
+
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
         fields = ['id', 'name', 'description', 'organization_id', 'is_active', 'created_at', 'updated_at']
+
 
 class DesignationSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source='department.name', read_only=True)
@@ -112,43 +115,46 @@ class UserCreateSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         """Create user with role assignment"""
-        from apps.roles.models import Role
+        from apps.roles.models import Role, RoleAssignment
         
         # Extract role_ids and passwords
         role_ids = validated_data.pop('role_ids')
         validated_data.pop('password_confirm')
         password = validated_data.pop('password')
         
-        # Create user
-        user = User.objects.create_user(
-            password=password,
-            **validated_data
-        )
-        
-        # Assign roles
-        roles = Role.objects.filter(
-            id__in=role_ids,
-            organization_id=user.organization_id,
-            is_active=True
-        )
-        
-        if not roles.exists():
-            user.delete()
-            raise serializers.ValidationError({
-                "role_ids": "No valid roles found for the given IDs"
-            })
-        
-        user.groups.set(roles)
-        
-        # Create role assignment records
-        from apps.roles.models import RoleAssignment
-        for role in roles:
-            RoleAssignment.objects.create(
-                user=user,
-                role=role,
-                assigned_by_id=self.context['request'].user.id,
-                assignment_reason="Initial role assignment during user creation"
+        #  Wrap entire operation in transaction
+        with transaction.atomic():
+            # Create user
+            user = User.objects.create_user(
+                password=password,
+                **validated_data
             )
+            
+            # Validate roles belong to the same organization
+            roles = Role.objects.filter(
+                id__in=role_ids,
+                organization_id=user.organization_id, 
+                is_active=True
+            )
+            
+            if not roles.exists():
+                # If no valid roles, rollback transaction
+                user.delete()
+                raise serializers.ValidationError({
+                    "role_ids": "No valid roles found for the given IDs"
+                })
+            
+            # Assign roles to user
+            user.groups.set(roles)
+            
+            # Create role assignment records (for audit trail)
+            for role in roles:
+                RoleAssignment.objects.create(
+                    user=user,
+                    role=role,
+                    assigned_by_id=self.context['request'].user.id,
+                    assignment_reason="Initial role assignment during user creation"
+                )
         
         return user
 
@@ -190,5 +196,4 @@ class PasswordChangeSerializer(serializers.Serializer):
         user.set_password(self.validated_data['new_password'])
         user.save()
         return user
-    
 

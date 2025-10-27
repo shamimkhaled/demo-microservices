@@ -46,8 +46,6 @@ django-filter==25.2
     # via -r requirements.in
 django-phonenumber-field==8.3.0
     # via -r requirements.in
-django-ratelimit==4.1.0
-    # via -r requirements.in
 django-redis==6.0.0
     # via -r requirements.in
 djangorestframework==3.16.1
@@ -59,6 +57,8 @@ djangorestframework-simplejwt==5.5.1
     # via -r requirements.in
 drf-yasg==1.21.11
     # via -r requirements.in
+gunicorn==23.0.0
+    # via -r requirements.in
 idna==3.11
     # via requests
 inflection==0.5.1
@@ -68,10 +68,11 @@ kombu==5.5.4
 packaging==25.0
     # via
     #   drf-yasg
+    #   gunicorn
     #   kombu
-phonenumbers==9.0.16
+phonenumbers==9.0.17
     # via -r requirements.in
-pillow==11.3.0
+pillow==12.0.0
     # via -r requirements.in
 prompt-toolkit==3.0.52
     # via click-repl
@@ -87,7 +88,7 @@ pytz==2025.2
     # via drf-yasg
 pyyaml==6.0.3
     # via drf-yasg
-redis==6.4.0
+redis==7.0.0
     # via
     #   -r requirements.in
     #   django-redis

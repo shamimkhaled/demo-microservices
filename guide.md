@@ -4,7 +4,7 @@
 
 This guide explains how the KTL microservices architecture implements multi-tenancy and authentication. The system consists of two main services:
 
-1. **Auth Service** (Port 8000) - Handles user authentication, roles, and permissions
+1. **Auth Service** (Port 8001) - Handles user authentication, roles, and permissions
 2. **Organization Service** (Port 8002) - Manages organizations/tenants and their settings
 
 ## Architecture Overview

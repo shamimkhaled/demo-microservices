@@ -6,7 +6,8 @@ from .views import (
     SyncSettingsView,
     organization_stats,
     verify_organization,
-    organization_profile
+    organization_profile,
+    organization_exists
 )
 
 app_name = 'organizations'
@@ -15,6 +16,9 @@ urlpatterns = [
     # Organization CRUD
     path('', OrganizationListCreateView.as_view(), name='organization-list-create'),
     path('<uuid:pk>/', OrganizationDetailView.as_view(), name='organization-detail'),
+
+    # Service-to-service endpoints
+    path('<uuid:pk>/exists/', organization_exists, name='organization-exists'),
 
     # Organization settings
     path('<uuid:organization_id>/billing-settings/', BillingSettingsView.as_view(), name='billing-settings'),

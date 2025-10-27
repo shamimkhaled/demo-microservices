@@ -7,15 +7,20 @@ from datetime import timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# Add shared module to Python path
-sys.path.append(str(BASE_DIR.parent.parent))
+# Add service paths to Python path
+# SERVICE_DIR = BASE_DIR.parent / 'services'
+# SHARED_DIR = BASE_DIR.parent / 'shared'
+# AUTH_SERVICE_DIR = SERVICE_DIR / 'auth-service'
+# ORGANIZATION_SERVICE_DIR = SERVICE_DIR / 'organization-service'
 
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+# Add root directory to Python path
+ROOT_DIR = BASE_DIR.parent.parent
+sys.path.insert(0, str(ROOT_DIR))
 
-SHARED_DIR = BASE_DIR.parent.parent / 'shared'
-sys.path.append(str(SHARED_DIR))
+
+
+
 
 
 # SECRET_KEY = 'django-insecure-+$l)7*(()o%a%l9rasu$smwetx+e!usc^(*=92!1l!(2v=!dfk'

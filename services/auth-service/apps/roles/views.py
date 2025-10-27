@@ -7,7 +7,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.contrib.auth.models import Permission
-
+from django.db import transaction 
 from apps.roles.models import Role, RoleAssignment
 from apps.roles.serializers import (
     RoleSerializer,
@@ -15,6 +15,8 @@ from apps.roles.serializers import (
     PermissionSerializer
 )
 from shared.permissions import IsSuperAdmin, IsAdminOrSuperAdmin
+from rest_framework import serializers
+
 
 
 class RoleListCreateView(generics.ListCreateAPIView):
@@ -42,12 +44,19 @@ class RoleListCreateView(generics.ListCreateAPIView):
         # Others can only see roles from their organization
         return queryset.filter(organization_id=user.organization_id)
     
+
+    def perform_create(self, serializer):
+        """Create role with transaction"""
+        with transaction.atomic():
+            serializer.save()
+    
     @swagger_auto_schema(
         operation_description="Create a new role with permissions",
         request_body=RoleSerializer
     )
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
+
 
 
 class RoleDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -84,6 +93,27 @@ class RoleDetailView(generics.RetrieveUpdateDestroyAPIView):
         super().perform_destroy(instance)
 
 
+    def update(self, request, *args, **kwargs):
+        """Handle permission updates in PUT/PATCH"""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        # Extract permission_ids before passing to serializer
+        permission_ids = request.data.get('permission_ids')
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        # Update permissions if provided
+        if permission_ids:
+            with transaction.atomic():
+                permissions_obj = Permission.objects.filter(id__in=permission_ids)
+                instance.permissions.set(permissions_obj)
+        
+        return Response(serializer.data)
+
+
 class RoleAssignmentView(APIView):
     """Assign or revoke roles from users"""
     permission_classes = [permissions.IsAuthenticated, IsAdminOrSuperAdmin]
@@ -99,16 +129,21 @@ class RoleAssignmentView(APIView):
         )
         
         if serializer.is_valid():
-            result = serializer.save()
+            with transaction.atomic():
+                result = serializer.save()
             return Response({
                 'success': True,
                 'data': result
             }, status=status.HTTP_200_OK)
         
+        
         return Response({
             'success': False,
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 
 
 class PermissionListView(generics.ListAPIView):
@@ -138,6 +173,10 @@ class PermissionListView(generics.ListAPIView):
             queryset = queryset.filter(content_type__app_label=app_label)
         
         return queryset.select_related('content_type')
+
+
+
+
 
 
 @api_view(['GET'])
@@ -177,3 +216,8 @@ def role_users(request, role_id):
             'success': False,
             'message': 'Role not found'
         }, status=status.HTTP_404_NOT_FOUND)
+
+
+
+
+

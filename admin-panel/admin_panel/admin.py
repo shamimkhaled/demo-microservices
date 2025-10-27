@@ -1,9 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from apps.users.models import User
-from apps.roles.models import Role, RoleAssignment
-from apps.organizations.models import Organization
-from apps.organizations.models import SyncSettings, BillingSettings
+from users.models import User
+from roles.models import Role, RoleAssignment
+from organizations.models import Organization, SyncSettings, BillingSettings
 
 # Register Auth Service models
 @admin.register(User)

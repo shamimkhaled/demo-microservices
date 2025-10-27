@@ -9,10 +9,8 @@ redis
 django-redis
 django-filter
 drf-yasg
-phonenumbers
-django-phonenumber-field
 requests
 Pillow
-django-ratelimit
 gunicorn
-
+django-phonenumber-field
+phonenumbers

@@ -1,9 +1,15 @@
 import os
+import sys
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+
+# Add root directory to Python path
+ROOT_DIR = BASE_DIR.parent.parent
+sys.path.insert(0, str(ROOT_DIR))
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me')
 DEBUG = config('DEBUG', default=False, cast=bool)
@@ -25,8 +31,7 @@ INSTALLED_APPS = [
     'django_filters',
     
     # Local apps
-    'organizations',
-    # 'apps.settings',
+    'apps.organizations',
 ]
 
 MIDDLEWARE = [

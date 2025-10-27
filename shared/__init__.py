@@ -1,7 +1,7 @@
 """
 Shared utilities and components for microservices
 """
-from .permissions import (
+from shared.permissions import (
     IsSuperAdmin,
     IsAdminOrSuperAdmin,
     IsOwnerOrAdmin,

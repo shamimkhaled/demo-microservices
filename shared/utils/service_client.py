@@ -202,10 +202,11 @@ class AuthServiceClient(BaseServiceClient):
     """
     
     def __init__(self):
+        # ✅ CRITICAL FIX: Changed port from 8001 to 8000
         auth_service_url = getattr(
             settings,
             'AUTH_SERVICE_URL',
-            'http://auth-service:8001'
+            'http://auth-service:8000'  # ✅ Correct port (was 8001)
         )
         super().__init__(base_url=f"{auth_service_url}/api/v1")
     

@@ -10,7 +10,7 @@ from drf_yasg import openapi
 
 from apps.users.models import User
 from apps.users.serializers import UserSerializer
-
+from django_ratelimit.decorators import ratelimit
 
 class LoginView(APIView):
     """User login with JWT token generation"""
@@ -53,6 +53,10 @@ class LoginView(APIView):
             )
         }
     )
+
+
+
+    @ratelimit(key='ip', rate='5/m', method='POST')
     def post(self, request):
         login_id = request.data.get('login_id')
         password = request.data.get('password')

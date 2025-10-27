@@ -4,45 +4,22 @@ Shared permission classes for all microservices
 from rest_framework import permissions
 
 
+from rest_framework import permissions
+
 class IsSuperAdmin(permissions.BasePermission):
-    """
-    Permission class to check if user is super admin
-    Only super_admin can perform the action
-    """
-    
     message = "Only super administrators can perform this action"
     
     def has_permission(self, request, view):
-        """Check if user is authenticated and is super admin"""
-        return (
-            request.user and
-            request.user.is_authenticated and
-            getattr(request.user, 'is_super_admin', False)
-        )
-
+        return request.user.is_authenticated and request.user.is_super_admin
 
 class IsAdminOrSuperAdmin(permissions.BasePermission):
-    """
-    Permission class to check if user is admin or super admin
-    """
-    
     message = "Only administrators can perform this action"
     
     def has_permission(self, request, view):
-        """Check if user is admin or super admin"""
-        if not request.user or not request.user.is_authenticated:
-            return False
-        
-        # Super admin always has access
-        if getattr(request.user, 'is_super_admin', False):
-            return True
-        
-        # Check if user has admin role
-        if hasattr(request.user, 'groups'):
-            return request.user.groups.filter(name__in=['admin', 'Admin', 'ADMIN']).exists()
-        
-        return False
-
+        return request.user.is_authenticated and (
+            request.user.is_super_admin or 
+            request.user.is_staff
+        )
 
 class IsOwnerOrAdmin(permissions.BasePermission):
     """
