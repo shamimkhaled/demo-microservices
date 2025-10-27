@@ -3,21 +3,19 @@ import sys
 from pathlib import Path
 from decouple import config
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent  # admin-panel root
 
-# Add service paths to Python path
-BASE_DIR = Path(__file__).resolve().parent.parent  # admin-panel/
-SERVICES_DIR = BASE_DIR.parent / 'services'  # services/
+# Add PARENT service directories (not apps directories)
+SERVICES_DIR = BASE_DIR / 'services'
 AUTH_SERVICE_DIR = SERVICES_DIR / 'auth-service'
 ORG_SERVICE_DIR = SERVICES_DIR / 'organization-service'
-SHARED_DIR = BASE_DIR.parent / 'shared'
+SHARED_DIR = BASE_DIR / 'shared'
 
-# Add directories to sys.path BEFORE Django imports
+
+# ← CHANGED: Add parent directories, NOT apps directories
 sys.path.insert(0, str(AUTH_SERVICE_DIR))
 sys.path.insert(0, str(ORG_SERVICE_DIR))
 sys.path.insert(0, str(SHARED_DIR))
-sys.path.insert(0, str(AUTH_SERVICE_DIR / 'apps'))
-sys.path.insert(0, str(ORG_SERVICE_DIR / 'apps'))
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me')
 DEBUG = True
@@ -36,10 +34,12 @@ INSTALLED_APPS = [
     'django_filters',
 
     # Service apps
-    'users.apps.UsersConfig',              # from auth-service/apps/users
-    'roles.apps.RolesConfig',              # from auth-service/apps/roles
-    'authentication.apps.AuthenticationConfig'
-    'organizations.apps.OrganizationsConfig', 
+    'apps.users',
+    'apps.roles',
+    'apps.authentication',
+    'apps.organizations',
+
+
     'admin_panel',
 ]
 
