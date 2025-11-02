@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.utils.functional import SimpleLazyObject
 import logging
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +39,12 @@ def get_user_from_token(request):
         # For now, we'll create a mock user object from payload
         class MockUser:
             def __init__(self, payload):
-                self.id = payload.get('user_id')
+                # Convert string IDs to UUID objects
+                self.id = uuid.UUID(payload.get('user_id')) if payload.get('user_id') else None
+                self.organization_id = uuid.UUID(payload.get('organization_id')) if payload.get('organization_id') else None
                 self.is_authenticated = True
                 self.is_active = True
                 self.is_super_admin = payload.get('is_super_admin', False)
-                self.organization_id = payload.get('organization_id')
                 self.login_id = payload.get('login_id')
                 self.email = payload.get('email')
                 self.name = payload.get('name')
@@ -52,6 +54,9 @@ def get_user_from_token(request):
             
             def has_perms(self, perm_list):
                 return self.is_super_admin
+                
+            def __str__(self):
+                return self.login_id or str(self.id)
         
         return MockUser(payload)
     
@@ -60,6 +65,9 @@ def get_user_from_token(request):
         return AnonymousUser()
     except jwt.InvalidTokenError as e:
         logger.warning(f"Invalid JWT token: {e}")
+        return AnonymousUser()
+    except ValueError as e:
+        logger.error(f"Invalid UUID in token: {e}")
         return AnonymousUser()
     except Exception as e:
         logger.error(f"Error decoding JWT token: {e}")

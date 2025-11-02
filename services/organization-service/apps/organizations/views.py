@@ -7,6 +7,8 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.db import transaction
+import uuid
+import logging
 
 from .models import Organization, BillingSettings, SyncSettings
 from .serializers import (
@@ -18,6 +20,8 @@ from .serializers import (
 )
 from shared.permissions import IsSuperAdmin, IsAdminOrSuperAdmin, IsSameOrganization
 from shared.utils.service_client import AuthServiceClient
+
+logger = logging.getLogger(__name__)
 
 
 class OrganizationListCreateView(generics.ListCreateAPIView):
@@ -47,10 +51,27 @@ class OrganizationListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         """Filter organizations for non-super-admins"""
+        queryset = super().get_queryset()
         user = self.request.user
-        if user.is_super_admin:
-            return super().get_queryset()
-        return super().get_queryset().filter(id=user.organization_id)
+        
+        # Super admin can see all organizations
+        if getattr(user, 'is_super_admin', False):
+            return queryset
+        
+        # Non-super-admins can only see their own organization
+        organization_id = getattr(user, 'organization_id', None)
+        if organization_id:
+            try:
+                # Convert string UUID to UUID object if needed
+                if isinstance(organization_id, str):
+                    organization_id = uuid.UUID(organization_id)
+                return queryset.filter(id=organization_id)
+            except (ValueError, TypeError) as e:
+                logger.error(f"Invalid organization_id: {organization_id} - {e}")
+                return queryset.none()
+        
+        # If no organization_id, return empty queryset (user shouldn't see anything)
+        return queryset.none()
 
     def perform_create(self, serializer):
         """Auto-create billing and sync settings"""
@@ -134,8 +155,16 @@ class BillingSettingsView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         organization_id = self.kwargs['organization_id']
+        
+        try:
+            # Convert string UUID to UUID object if needed
+            if isinstance(organization_id, str):
+                organization_id = uuid.UUID(organization_id)
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid organization_id: {organization_id} - {e}")
+            return generics.get_object_or_404(Organization, id=organization_id)
+        
         organization = generics.get_object_or_404(Organization, id=organization_id)
-
         self.check_object_permissions(self.request, organization)
 
         billing_settings, created = BillingSettings.objects.get_or_create(
@@ -151,8 +180,16 @@ class SyncSettingsView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         organization_id = self.kwargs['organization_id']
+        
+        try:
+            # Convert string UUID to UUID object if needed
+            if isinstance(organization_id, str):
+                organization_id = uuid.UUID(organization_id)
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid organization_id: {organization_id} - {e}")
+            return generics.get_object_or_404(Organization, id=organization_id)
+        
         organization = generics.get_object_or_404(Organization, id=organization_id)
-
         self.check_object_permissions(self.request, organization)
 
         sync_settings, created = SyncSettings.objects.get_or_create(
@@ -166,6 +203,10 @@ class SyncSettingsView(generics.RetrieveUpdateAPIView):
 def organization_exists(request, pk):
     """Check if organization exists and is active"""
     try:
+        # Convert string UUID to UUID object if needed
+        if isinstance(pk, str):
+            pk = uuid.UUID(pk)
+        
         organization = Organization.objects.get(id=pk, is_active=True)
         return Response({
             'success': True,
@@ -177,7 +218,7 @@ def organization_exists(request, pk):
                 'org_type': organization.org_type,
             }
         }, status=status.HTTP_200_OK)
-    except Organization.DoesNotExist:
+    except (Organization.DoesNotExist, ValueError, TypeError):
         return Response({
             'success': False,
             'exists': False
@@ -213,8 +254,12 @@ def organization_stats(request):
 def verify_organization(request, organization_id):
     """Verify an organization (admin only)"""
     try:
+        # Convert string UUID to UUID object if needed
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        
         organization = Organization.objects.get(id=organization_id)
-    except Organization.DoesNotExist:
+    except (Organization.DoesNotExist, ValueError, TypeError):
         return Response({
             'success': False,
             'message': 'Organization not found'
@@ -259,14 +304,23 @@ def organization_profile(request):
         }, status=status.HTTP_400_BAD_REQUEST)
 
     try:
+        # Convert string UUID to UUID object if needed
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        
         organization = Organization.objects.get(id=organization_id)
         serializer = OrganizationSerializer(organization)
         return Response({
             'success': True,
             'data': serializer.data
         })
-    except Organization.DoesNotExist:
+    except (Organization.DoesNotExist, ValueError, TypeError) as e:
+        logger.error(f"Error fetching organization: {e}")
         return Response({
             'success': False,
             'message': 'Organization not found'
         }, status=status.HTTP_404_NOT_FOUND)
+
+
+
+        

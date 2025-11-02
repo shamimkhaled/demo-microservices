@@ -7,7 +7,11 @@ from django.utils import timezone
 class Role(models.Model):
     """
     Extended Django Group model for roles.
-    Inherits from Django's Group to automatically get permissions.
+    Links to Django's Permission model for permissions management.
+    
+    - Role is for organizational role-based access control
+    - Role assignments are tracked via RoleAssignment
+    - Django's Group is NOT used with Roles
     """
     
     # Use UUID as primary key
@@ -22,6 +26,13 @@ class Role(models.Model):
     organization_id = models.UUIDField(
         help_text='Organization UUID from Organization Service',
         db_index=True
+    )
+    
+    permissions = models.ManyToManyField(
+        Permission,
+        blank=True,
+        related_name='roles',
+        help_text='Django permissions assigned to this role'
     )
     
     # Role hierarchy & control
@@ -64,21 +75,23 @@ class Role(models.Model):
         return self.permissions.select_related('content_type').all()
     
     def assign_to_user(self, user):
-        """Assign this role to a user"""
-        user.groups.add(self)
+        """
+        Assign this role to a user
+        Now only uses RoleAssignment for tracking
+        """
+
         
         # Create assignment record
         RoleAssignment.objects.create(
             user=user,
             role=self,
-            assigned_by_id=user.id,  # In real scenario, get from request
+            assigned_by_id=user.id,
             is_active=True
         )
         return True
     
     def remove_from_user(self, user):
         """Remove this role from a user"""
-        user.groups.remove(self)
         
         # Update assignment record
         RoleAssignment.objects.filter(
@@ -95,6 +108,9 @@ class Role(models.Model):
 class RoleAssignment(models.Model):
     """
     Track role assignments with audit trail
+    
+    This is the ONLY way to track which users have which roles.
+    Do NOT use Django's Group model for this.
     """
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -131,4 +147,6 @@ class RoleAssignment(models.Model):
     
     def __str__(self):
         return f"{self.user.name} - {self.role.display_name}"
-    
+
+
+

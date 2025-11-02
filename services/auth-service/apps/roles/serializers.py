@@ -12,14 +12,18 @@ class PermissionSerializer(serializers.ModelSerializer):
 
 
 class RoleSerializer(serializers.ModelSerializer):
-    """Role serializer"""
+    """Role serializer with proper permissions handling"""
     
+    # Read permissions as PermissionSerializer objects
     permissions = PermissionSerializer(many=True, read_only=True)
+    
+    # Write permission IDs as a list of integers
     permission_ids = serializers.ListField(
         child=serializers.IntegerField(),
         write_only=True,
         required=False
     )
+    
     users_count = serializers.SerializerMethodField()
     
     class Meta:
@@ -31,24 +35,25 @@ class RoleSerializer(serializers.ModelSerializer):
             'permissions', 'permission_ids', 'users_count',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'permissions', 'users_count']
     
     def get_users_count(self, obj):
         """Get count of users with this role"""
-        return obj.user_set.count()
+        # Count users in the role_assignments (active assignments)
+        return obj.user_assignments.filter(is_active=True).count()
     
     def validate(self, attrs):
         """Validate role creation"""
-        # Validate organization exists
-        from shared.utils.service_client import OrganizationServiceClient
-        org_client = OrganizationServiceClient()
-        if not org_client.organization_exists(attrs['organization_id']):
-            raise serializers.ValidationError({
-                "organization_id": "Organization does not exist"
-            })
-        
-        # Check if role name already exists for this organization
+        # Validate organization exists (only on create)
         if self.instance is None:  # Creating new role
+            from shared.utils.service_client import OrganizationServiceClient
+            org_client = OrganizationServiceClient()
+            if not org_client.organization_exists(attrs.get('organization_id')):
+                raise serializers.ValidationError({
+                    "organization_id": "Organization does not exist"
+                })
+            
+            # Check if role name already exists for this organization
             if Role.objects.filter(
                 name=attrs['name'],
                 organization_id=attrs['organization_id']
@@ -66,9 +71,10 @@ class RoleSerializer(serializers.ModelSerializer):
         # Set created_by
         validated_data['created_by_id'] = self.context['request'].user.id
         
+        # Create the role
         role = Role.objects.create(**validated_data)
         
-        # Assign permissions
+        # Assign permissions if provided
         if permission_ids:
             permissions = Permission.objects.filter(id__in=permission_ids)
             role.permissions.set(permissions)
@@ -139,7 +145,7 @@ class RoleAssignmentSerializer(serializers.Serializer):
         else:
             role.remove_from_user(user)
             return {'action': 'revoked', 'user': user.id, 'role': role.id}
-        
 
 
-        
+
+            

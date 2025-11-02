@@ -31,11 +31,17 @@ class DesignationSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """User serializer for read operations"""
+    """
+    User serializer for read operations
+    
+    Gets roles from RoleAssignment, not Django Group
+    Gets permissions from Role.permissions, not Group.permissions
+    """
     
     roles = serializers.SerializerMethodField()
     permissions = serializers.SerializerMethodField()
     
+
     class Meta:
         model = User
         fields = [
@@ -50,21 +56,41 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'last_login', 'created_at', 'updated_at']
     
     def get_roles(self, obj):
-        """Get user roles"""
+        """
+        Get user roles from RoleAssignment (not Django Group)
+        
+        Uses role_assignments instead of groups
+        """
+        # Get active role assignments
+        role_assignments = obj.role_assignments.filter(is_active=True)
+        
         return [
             {
-                'id': str(role.id),
-                'name': role.name,
-                'display_name': role.display_name
+                'id': str(assignment.role.id),
+                'name': assignment.role.name,
+                'display_name': assignment.role.display_name
             }
-            for role in obj.groups.all()
+            for assignment in role_assignments
         ]
     
     def get_permissions(self, obj):
-        """Get user permissions"""
+        """
+        Get user permissions from their roles
+        
+        Gets permissions from Role.permissions via RoleAssignment
+        (not from Django Group.permissions)
+        """
         perms = set()
-        for group in obj.groups.all():
-            perms.update(group.permissions.values_list('codename', flat=True))
+        
+        # Get all active role assignments for this user
+        role_assignments = obj.role_assignments.filter(is_active=True)
+        
+        # Collect permissions from each role
+        for assignment in role_assignments:
+            perms.update(
+                assignment.role.permissions.values_list('codename', flat=True)
+            )
+        
         return list(perms)
 
 
@@ -97,7 +123,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
                 "password_confirm": "Passwords do not match"
             })
         
-        # CRITICAL: Validate role_ids is not empty
+        # Validate role_ids is not empty
         if not attrs.get('role_ids'):
             raise serializers.ValidationError({
                 "role_ids": "User must have at least one role assigned"
@@ -144,10 +170,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
                     "role_ids": "No valid roles found for the given IDs"
                 })
             
-            # Assign roles to user
-            user.groups.set(roles)
             
-            # Create role assignment records (for audit trail)
+            # Instead, create RoleAssignment records for each role
             for role in roles:
                 RoleAssignment.objects.create(
                     user=user,
@@ -196,4 +220,6 @@ class PasswordChangeSerializer(serializers.Serializer):
         user.set_password(self.validated_data['new_password'])
         user.save()
         return user
+
+
 

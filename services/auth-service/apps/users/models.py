@@ -124,6 +124,7 @@ class UserManager(BaseUserManager):
         
         email = self.normalize_email(email)
         extra_fields.setdefault('username', login_id)
+
         
         user = self.model(login_id=login_id, email=email, **extra_fields)
         user.set_password(password)
@@ -136,6 +137,9 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_super_admin', True)
         # Set a default organization_id for superuser
         extra_fields.setdefault('organization_id', uuid.uuid4())
+        extra_fields.setdefault('name', login_id.capitalize())  
+        extra_fields.setdefault('is_active', True)
+        extra_fields.setdefault('is_email_verified', True)
         
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Superuser must have is_staff=True')
@@ -143,7 +147,7 @@ class UserManager(BaseUserManager):
             raise ValueError('Superuser must have is_superuser=True')
         
         return self.create_user(login_id, email, password, **extra_fields)
-
+     
 
 class User(AbstractUser):
     """

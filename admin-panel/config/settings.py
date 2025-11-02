@@ -3,22 +3,23 @@ import sys
 from pathlib import Path
 from decouple import config
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent  # admin-panel root
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Add PARENT service directories (not apps directories)
-SERVICES_DIR = BASE_DIR / 'services'
-AUTH_SERVICE_DIR = SERVICES_DIR / 'auth-service'
-ORG_SERVICE_DIR = SERVICES_DIR / 'organization-service'
-SHARED_DIR = BASE_DIR / 'shared'
+# Add service paths to Python path - MUST be done BEFORE any Django imports
+SERVICE_DIR = BASE_DIR.parent / 'services'
+AUTH_SERVICE_DIR = SERVICE_DIR / 'auth-service'
+ORG_SERVICE_DIR = SERVICE_DIR / 'organization-service'
+SHARED_DIR = BASE_DIR.parent / 'shared'
 
-
-# ← CHANGED: Add parent directories, NOT apps directories
+# Insert at beginning of path so these take priority
 sys.path.insert(0, str(AUTH_SERVICE_DIR))
 sys.path.insert(0, str(ORG_SERVICE_DIR))
 sys.path.insert(0, str(SHARED_DIR))
 
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me')
-DEBUG = True
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-production')
+
+DEBUG = config('DEBUG', default=True, cast=bool)
+
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
@@ -32,15 +33,15 @@ INSTALLED_APPS = [
     # Third party
     'rest_framework',
     'django_filters',
+    'phonenumber_field',
 
-    # Service apps
+    # Auth Service apps
     'apps.users',
     'apps.roles',
     'apps.authentication',
+
+    # Organization Service apps
     'apps.organizations',
-
-
-    'admin_panel',
 ]
 
 MIDDLEWARE = [
@@ -73,6 +74,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+# Database configuration - Three separate databases
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -80,42 +82,43 @@ DATABASES = {
     },
     'auth_db': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': SERVICES_DIR / 'auth-service' / 'db.sqlite3',
+        'NAME': AUTH_SERVICE_DIR / 'db.sqlite3',
     },
     'organization_db': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': SERVICES_DIR / 'organization-service' / 'db.sqlite3',
+        'NAME': ORG_SERVICE_DIR / 'db.sqlite3',
     }
 }
 
+# Database router for handling multiple databases
 DATABASE_ROUTERS = ['config.db_routers.DatabaseRouter']
 
-
-
-
-
+# Use custom user model from auth service
 AUTH_USER_MODEL = 'users.User'
 
-AUTH_USER_MODEL = 'users.User'
-
+# Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
 ]
 
-# ============================================================================
-# INTERNATIONALIZATION
-# ============================================================================
+# Internationalization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Dhaka'
 USE_I18N = True
 USE_TZ = True
 
-# ============================================================================
-# STATIC FILES & MEDIA
-# ============================================================================
+# Static files
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
@@ -123,30 +126,34 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ============================================================================
-# REST FRAMEWORK CONFIGURATION
-# ============================================================================
+# REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
     ],
 }
 
-# ============================================================================
-# CORS CONFIGURATION
-# ============================================================================
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:8000",
-    "http://localhost:8001",
-    "http://localhost:8002",
-]
-
-
-
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}

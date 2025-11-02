@@ -10,11 +10,21 @@ from drf_yasg import openapi
 
 from apps.users.models import User
 from apps.users.serializers import UserSerializer
-from django_ratelimit.decorators import ratelimit
+# from django_ratelimit.decorators import ratelimit
+from rest_framework.throttling import AnonRateThrottle 
+
+
+
+
+class LoginRateThrottle(AnonRateThrottle):
+    """Rate throttle for login endpoint - 5 requests per minute per IP"""
+    scope = 'login'
+
 
 class LoginView(APIView):
     """User login with JWT token generation"""
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [LoginRateThrottle]
     
     @swagger_auto_schema(
         operation_description="Login with login_id and password",
@@ -56,7 +66,7 @@ class LoginView(APIView):
 
 
 
-    @ratelimit(key='ip', rate='5/m', method='POST')
+    # @ratelimit(key='ip', rate='5/m', method='POST')
     def post(self, request):
         login_id = request.data.get('login_id')
         password = request.data.get('password')

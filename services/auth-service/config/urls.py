@@ -44,8 +44,9 @@ urlpatterns = [
     path('api/v1/roles/', include('apps.roles.urls')),
     
     # API Documentation
-    path('auth-service/swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('auth-service/redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    path('api/v1/auth-service/swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('api/v1/auth-service/redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    path('api/v1/auth-service/auth_service_api.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
 ]
 
 if settings.DEBUG:

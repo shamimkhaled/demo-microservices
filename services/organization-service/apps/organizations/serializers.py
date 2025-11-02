@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.organizations.models import Organization, BillingSettings, SyncSettings
+from .models import Organization, BillingSettings, SyncSettings
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -128,3 +128,6 @@ class OrganizationProfileSerializer(serializers.Serializer):
     city = serializers.CharField()
     is_active = serializers.BooleanField()
     is_verified = serializers.BooleanField()
+
+
+    
