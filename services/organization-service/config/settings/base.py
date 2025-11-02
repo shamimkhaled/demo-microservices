@@ -44,7 +44,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'shared.middleware.authentication.JWTAuthenticationMiddleware',
-
+    'shared.middleware.authentication.OrganizationContextMiddleware',
+    'shared.middleware.authentication.RequestLoggingMiddleware',
+    'shared.middleware.authentication.ErrorHandlingMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -118,7 +120,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # Authentication handled by shared middleware
+        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
         # 'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
