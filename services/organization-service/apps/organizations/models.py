@@ -11,10 +11,7 @@ class Organization(models.Model):
 
     # Primary fields
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
-    class Meta:
-        app_label = 'organizations'
-    name = models.CharField(max_length=255, unique=True,  default='Kloud Technologies Ltd')
+    name = models.CharField(max_length=255, unique=True, default='Kloud Technologies Ltd')
     code = models.CharField(
         max_length=20,
         unique=True,
@@ -34,7 +31,6 @@ class Organization(models.Model):
         ('isp', 'Internet Service Provider'),
         ('corporate', 'Corporate/Enterprise'),
         ('other', 'Other'),
-        
     ]
     org_type = models.CharField(max_length=20, choices=ORG_TYPE_CHOICES, default='isp')
     
@@ -54,8 +50,6 @@ class Organization(models.Model):
     trade_license = models.CharField(max_length=100, blank=True, null=True)
     tin_number = models.CharField(max_length=50, blank=True, null=True)
     registration_number = models.CharField(max_length=100, blank=True, null=True)
-
-
 
     # Media Files
     logo_img = models.ImageField(
@@ -95,7 +89,6 @@ class Organization(models.Model):
         help_text='Website favicon'
     )
 
-
     # Currency & payment
     currency = models.CharField(max_length=10, default='BDT')
     currency_symbol = models.CharField(max_length=5, default='৳')
@@ -105,7 +98,6 @@ class Organization(models.Model):
     seo_description = models.TextField(blank=True, null=True)
     seo_keywords = models.TextField(blank=True, null=True)
     meta_description = models.TextField(blank=True, null=True)
-
 
     # Revenue Sharing Configuration
     revenue_sharing_enabled = models.BooleanField(default=True)
@@ -117,26 +109,16 @@ class Organization(models.Model):
     # API Version Handling (dynamic per organization)
     api_version = models.CharField(max_length=10, default='v1.0', help_text='Dynamic API version for this organization')
     
-    
     # Status & control
     is_active = models.BooleanField(default=True, db_index=True)
     is_verified = models.BooleanField(default=False)
-    
-    # Hierarchy (for resellers/sub-resellers)
-    # parent_organization = models.ForeignKey(
-    #     'self',
-    #     on_delete=models.SET_NULL,
-    #     null=True,
-    #     blank=True,
-    #     related_name='child_organizations'
-    # )
-    
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by_id = models.UUIDField(blank=True, null=True)
-    
+
+
     class Meta:
         db_table = 'organizations'
         verbose_name = 'Organization'
@@ -150,7 +132,6 @@ class Organization(models.Model):
     
     def __str__(self):
         return f"{self.name} ({self.code})"
-
 
     def calculate_commission_split(self, amount, customer_type, has_sub_reseller=False):
         """Calculate commission split based on customer type"""
@@ -175,33 +156,19 @@ class Organization(models.Model):
                     'reseller': reseller_share
                 }
         
-        # elif customer_type == 'corporate':
-        #     commission = amount * (self.corporate_commission_rate / 100)
-        #     org_share = amount - commission
-        #     return {
-        #         'organization': org_share,
-        #         'commission': commission
-        #     }
-        
         return {'organization': amount}
-    
 
 
 class BillingSettings(models.Model):
     """
     Billing configuration for each organization
     """
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
-    class Meta:
-        app_label = 'organizations'
     organization = models.OneToOneField(
         Organization,
         on_delete=models.CASCADE,
         related_name='billing_settings'
     )
-    
     
     max_manual_grace_days = models.IntegerField(
         default=9,
@@ -211,7 +178,6 @@ class BillingSettings(models.Model):
         default=False,
         help_text='Disable automatic account expiry'
     )
-
     default_grace_days = models.IntegerField(
         default=1,
         help_text='Default grace period in days'
@@ -220,24 +186,25 @@ class BillingSettings(models.Model):
         default=True,
         help_text='Enable jump billing for overdue accounts'
     )
-   
     default_grace_hours = models.IntegerField(
         default=14,
         help_text='Default grace period in hours for hourly plans'
     )
     max_inactive_days = models.IntegerField(
         default=3,
-        help_text='Maximum inactive days before account is disabled')
-    
+        help_text='Maximum inactive days before account is disabled'
+    )
     delete_permanent_disable_secret_from_mikrotik = models.IntegerField(
         default=1,
         help_text='Days before permanent disable is triggered'
-    )  # 0 for immediate delete
+    )
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+
+
     class Meta:
         db_table = 'billing_settings'
         verbose_name = 'Billing Setting'
@@ -251,18 +218,14 @@ class SyncSettings(models.Model):
     """
     Synchronization settings for RouterOS, OLT, etc.
     """
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
-    class Meta:
-        app_label = 'organizations'
     organization = models.OneToOneField(
         Organization,
         on_delete=models.CASCADE,
         related_name='sync_settings'
     )
     
-   # MikroTik Sync Settings
+    # MikroTik Sync Settings
     sync_area_to_mikrotik = models.BooleanField(
         default=False,
         help_text='Sync area information to MikroTik'
@@ -275,7 +238,7 @@ class SyncSettings(models.Model):
         default=False,
         help_text='Sync customer mobile number to MikroTik'
     )
-    # telegram_bot_token = models.CharField(max_length=255, blank=True, null=True)
+    
     SYNC_STATUS_CHOICES = (
         ('pending', 'Pending'),
         ('in_progress', 'In Progress'),
@@ -305,6 +268,8 @@ class SyncSettings(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+  
+  
     class Meta:
         db_table = 'sync_settings'
         verbose_name = 'Sync Setting'
@@ -312,6 +277,6 @@ class SyncSettings(models.Model):
     
     def __str__(self):
         return f"Sync Settings - {self.organization.name}"
-    
 
-    
+
+
